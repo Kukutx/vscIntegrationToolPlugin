@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ch">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>未定义欢迎页</title>
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css"> -->
+    <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+    <style>
+        html, body, #app {
+            height: 100%;
+        }
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px
+        }
+
+        ::-webkit-scrollbar-track {
+            border-radius: 10px;
+            background-color: #d8dce5
+        }
+
+        ::-webkit-scrollbar-thumb {
+            border-radius: 5px;
+            background-color: #adadad
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #929292
+        }
+
+        ::-webkit-scrollbar-thumb:active {
+            background-color: #666363
+        }
+
+        ::-webkit-scrollbar-corner {
+            background-color: #535353
+        }
+
+        ::-webkit-scrollbar-resizer {
+            background-color: #ff6e00
+        }
+        .page-title {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            font-weight: normal;
+        }
+
+        .btn-primary {
+            background-color: #1890ff;
+            border-color: #1890ff;
+            outline: none;
+        }
+
+        .btn-primary:focus,
+        .btn-primary:hover {
+            background-color: #40a9ff;
+            border-color: #40a9ff;
+            outline: none;
+        }
+
+        .btn-primary.active,
+        .btn-primary:active {
+            background-color: #096dd9;
+            border-color: #096dd9;
+            color: #fff;
+            outline: none;
+        }
+
+
+
+        #container{margin:0;padding:0;}
+    	#box1,#box2,#box3,#box4{width:100%;height:500px;}
+    	#box1{background: deepskyblue;}
+    	#box2{background: yellowgreen;}
+    	#box3{background: darkred;}
+    	#box4{background: blueviolet;}
+        #icon{width:50px;height:50px;font-size: 20px;background: #CDCC7D;line-height: 50px;text-align: center;position: fixed;bottom:20px;right:20px;color:#666;font-weight: bolder;}
+    </style>
+    </head>  
+    <body>
+        <div id="container">
+            <div id="box1">
+                <h3 class="page-title">IntegrationTool</h3>
+                <p class="alert alert-success" style="width: 300px;">{{time}}好！,{{userName}}</p>
+                <p class="alert alert-success" style="width: 300px;">目前只支持Windows平台</p>
+                <form class="form-horizontal">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" v-model="show"> 启动时显示未定义欢迎页
+                        </label>
+                    </div>
+                </form>
+            </div>
+    		<div id="box2"></div>
+    		<div id="box3"></div>
+    		<div id="box4"></div>    
+            <div id="icon">↑</div>
+        </div>
+      
+    </body>
+<!-- Javascript -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+<script src="https://unpkg.com/vue/dist/vue.js"></script> -->
+<script src="./lib/jquery/jquery.min.js"></script>
+<script src="./lib/bootstrap/js/bootstrap.min.js"></script>
+<script src="./lib/vue/vue.js"></script>
+<script>
+    // @ts-ignore
+    const vscode = acquireVsCodeApi();
+    // @ts-ignore
+    const callbacks = {};
+    
+    /**
+     * 调用vscode原生api
+     * @param data 可以是类似 {cmd: 'xxx', param1: 'xxx'}，也可以直接是 cmd 字符串
+     * @param cb 可选的回调函数
+     */
+    //呼唤vscode
+    function callVscode(data, cb) {
+        if (typeof data === 'string') {
+            data = { cmd: data };
+        }
+        if (cb) {
+            // 时间戳加上5位随机数
+            const cbid = Date.now() + '' + Math.round(Math.random() * 100000);
+            callbacks[cbid] = cb;
+            data.cbid = cbid;
+        }
+        //发送信息到插件
+        vscode.postMessage(data);
+        
+    }
+    
+    // @ts-ignore
+    //回调方法
+    window.addEventListener('message', event => {
+        const message = event.data;
+        switch (message.cmd) {
+            case 'vscodeCallback':
+                console.log(message.data);
+                (callbacks[message.cbid] || function () { })(message.data);
+                delete callbacks[message.cbid];
+                break;
+            default: break;
+        }
+    });
+    
+    // @ts-ignore
+    new Vue({
+        el: '#container',
+        data: {
+            userName: '',
+            time: '',
+            show: true,
+        },
+        //自定义名字
+        mounted() {
+            this.time = this.getTime();
+            callVscode({cmd: 'getConfig', key: 'IntegrationToolPlugin.Name'}, userName => this.userName = userName);
+            callVscode({cmd: 'getConfig', key: 'IntegrationToolPlugin.ShowTip'}, show => this.show = show);
+        },
+        //checkbox框
+        watch: {
+            // @ts-ignore
+            show(nv, ov) {
+                callVscode({cmd: 'setConfig', key: 'IntegrationToolPlugin.ShowTip', value: nv}, null);
+            }
+        },
+        methods: {
+            //切换显示提示
+            toggleShowTip() {
+                this.show = !this.show;    
+            },
+            //时间
+            getTime() {
+                const hour = new Date().getHours();
+                if (hour <= 8) return '早上';
+                else if (hour < 12) return '上午';
+                else if (hour < 14) return '中午';
+                else if (hour < 18) return '下午';
+                return '晚上';
+            }
+        }
+    });
+</script>
+<script type="text/javascript">
+    window.onload = function(){
+        var btn = document.getElementById("icon");
+        var timer = null;
+        var oScroll = true;
+        //滚动条事件,触发时清空定时器
+        window.onscroll = function(){
+            if(!oScroll){
+                clearInterval(timer);
+            }
+            oScroll = false;
+        }
+        btn.onclick = function(){
+            //加入定时器让他又快到慢滚动到顶部
+            timer = setInterval(function(){
+                //获取当前scrollTop的高度位置（兼容ie和chrom浏览器）
+                var oTop = document.documentElement.scrollTop || document.body.scrollTop;
+                //设置速度由快到慢
+                var ispeed = Math.floor(-oTop / 7);
+                document.documentElement.scrollTop = document.body.scrollTop = oTop + ispeed;
+                oScroll = true;
+                if(oTop == 0){
+                    clearInterval(timer);
+                }
+            },30);
+        }
+    }
+</script>
+</html>
